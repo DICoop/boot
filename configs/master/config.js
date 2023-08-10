@@ -195,6 +195,12 @@ var config = {
         is_contract: true,
       },
       {
+        username: 'soviet',
+        code_permissions_to: ["soviet"],
+        ram_kbytes: 1024,
+        is_contract: true,
+      },
+      {
         username: 'refresher',
         code_permissions_to: [],
         ram_kbytes: 1024,
@@ -226,6 +232,10 @@ var config = {
       },
       {
         username: 'eosio.stake',
+        code_permissions_to: [],
+      },
+      {
+        username: 'chairman',
         code_permissions_to: [],
       },
       {
@@ -284,7 +294,7 @@ var config = {
         username: 'p2p',
         code_permissions_to: ["p2p"],
         is_contract: true,
-        ram_kbytes: 1024,
+        ram_kbytes: 2024,
         referer: "part"
       }, 
       {

@@ -142,6 +142,14 @@ var contracts = [
           "output_name" : "eosio.system",
           "cdt" : "v1.7.0",
           "networks": {"master" : "eosio", "uni" : "eosio", "cbs" : "eosio", "tc" : "eosio", "dacom" : "eosio", "essence": "eosio","eywa": "eosio",  "thews": "eosio"},
+        },
+        {
+          "name" : "soviet",
+          "path" : "/Users/darksun/dacom-code/foundation/contracts/soviet",
+          "main_file" : "soviet.cpp",
+          "output_name" : "soviet",
+          "cdt" : "v1.7.0",
+          "networks": {"master" : "soviet"},
         }
         
       ];
