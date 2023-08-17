@@ -201,6 +201,18 @@ var config = {
         is_contract: true,
       },
       {
+        username: 'marketplace',
+        code_permissions_to: ["marketplace"],
+        ram_kbytes: 1024,
+        is_contract: true,
+      },
+      {
+        username: 'bet',
+        code_permissions_to: ["bet"],
+        ram_kbytes: 1024,
+        is_contract: true,
+      },
+      {
         username: 'refresher',
         code_permissions_to: [],
         ram_kbytes: 1024,
@@ -236,7 +248,7 @@ var config = {
       },
       {
         username: 'chairman',
-        code_permissions_to: [],
+        code_permissions_to: ['soviet'],
       },
       {
         username: 'eosio.vpay',
@@ -317,6 +329,36 @@ var config = {
       },
       {
         username: 'tester',
+        code_permissions_to: [],
+        referer: "part",
+        ram_kbytes: 32,
+      },
+      {
+        username: 'tester1',
+        code_permissions_to: ['soviet'],
+        referer: "part",
+        ram_kbytes: 32,
+      },
+      {
+        username: 'tester2',
+        code_permissions_to: ['soviet'],
+        referer: "part",
+        ram_kbytes: 32,
+      },
+      {
+        username: 'tester3',
+        code_permissions_to: ['soviet'],
+        referer: "part",
+        ram_kbytes: 32,
+      },
+      {
+        username: 'tester4',
+        code_permissions_to: [],
+        referer: "part",
+        ram_kbytes: 32,
+      },
+      {
+        username: 'tester5',
         code_permissions_to: [],
         referer: "part",
         ram_kbytes: 32,

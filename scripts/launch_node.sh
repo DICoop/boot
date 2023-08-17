@@ -30,4 +30,4 @@ dacomfoundation/leap_v4.0.4 \
 /bin/bash -c '/usr/bin/nodeos -d /mnt/dev/data -p eosio --config-dir /mnt/dev/config --disable-replay-opts'
 
 echo "Контейнер node установлен - блокчейн запущен."
-
+sleep 5

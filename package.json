@@ -4,18 +4,23 @@
   "description": "Backend for registrator with email confirmation",
   "main": "index.js",
   "scripts": {
+    "bet": "mocha tests/bet.js",
     "test": "mocha tests/boot.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "fulltest": "./scripts/purge_node.sh && ./scripts/launch_node.sh && node index.js && npm test"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@sendgrid/mail": "^6.3.1",
     "axios": "^0.27.2",
+    "bignumber.js": "^9.1.1",
     "chai": "^4.3.7",
     "dotenv": "^8.0.0",
     "eosjs": "^20.0.3",
+    "eosjs-account-name": "^2.3.0",
     "eosjs-api": "^7.0.4",
+    "eosjs-ecc": "^4.0.7",
     "express": "^4.16.4",
     "fs": "0.0.1-security",
     "md5": "^2.2.1",
@@ -23,6 +28,7 @@
     "mongodb": "^3.2.3",
     "node-fetch": "^2.6.12",
     "text-encoding": "^0.7.0",
+    "unicore": "github:unicore/uniJS",
     "util": "^0.12.4"
   }
 }

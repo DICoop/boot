@@ -150,6 +150,22 @@ var contracts = [
           "output_name" : "soviet",
           "cdt" : "v1.7.0",
           "networks": {"master" : "soviet"},
+        },
+        {
+          "name" : "marketplace",
+          "path" : "/Users/darksun/dacom-code/foundation/contracts/marketplace",
+          "main_file" : "marketplace.cpp",
+          "output_name" : "marketplace",
+          "cdt" : "v1.7.0",
+          "networks": {"master" : "marketplace"},
+        },
+        {
+          "name" : "bet",
+          "path" : "/Users/darksun/dacom-code/foundation/contracts/bet",
+          "main_file" : "bet.cpp",
+          "output_name" : "bet",
+          "cdt" : "v1.7.0",
+          "networks": {"master" : "bet"},
         }
         
       ];
