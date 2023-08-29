@@ -1,7 +1,7 @@
 var config = {
-  init_key: "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3",
-  main_key: "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3",
-  producer_key: "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  init_key: "5JkVKgCk1ARftYnRndRUsYrpiGV5QjqstfNFXBikTxyvFZ53ocd",
+  main_key: "5JkVKgCk1ARftYnRndRUsYrpiGV5QjqstfNFXBikTxyvFZ53ocd",
+  producer_key: "EOS812BiqaJ7KTSLTBhvwWnLGe9rQjiraJWCVmUsGnjNHXJqggW7K",
   core_token: "4,AXON",
   init_market_amount: 50000000000,
   main_core_contract: "unicore",
@@ -107,24 +107,12 @@ var config = {
       toRegistrator: "20000.0000 AXON",
       allocation: [{
         username: "eosio",
-        amount: "250000.0000 AXON"
+        amount: "5000.0000 AXON"
       },
-      {
-        username: "alfatest",
-        amount: "1000.0000 AXON"
-      },
-      {
-        username: "tester1",
-        amount: "1000.0000 AXON"
-      },
-      {
-        username: "tester2",
-        amount: "1000.0000 AXON"
-      },
-      {
-        username: "tester",
-        amount: "1000.0000 AXON"
-      }
+      // {
+      //   username: "alfatest",
+      //   amount: "1000.0000 AXON"
+      // }
       ]  
     },
     // {
@@ -178,9 +166,9 @@ var config = {
   accounts : {
     
     params: {
-      default_key: "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-      default_net_weight: '5.0000 AXON',
-      default_cpu_weight: '5.0000 AXON',
+      default_key: "EOS812BiqaJ7KTSLTBhvwWnLGe9rQjiraJWCVmUsGnjNHXJqggW7K",
+      default_net_weight: '1.0000 AXON',
+      default_cpu_weight: '1.0000 AXON',
       default_ram_kbytes: 16,
     },
 
@@ -317,10 +305,6 @@ var config = {
         code_permissions_to: [],
         is_contract: true,
         ram_kbytes: 1024,
-      }, 
-      {
-        username: 'provider',
-        code_permissions_to: [],
       }, 
       {
         username: 'notifier',

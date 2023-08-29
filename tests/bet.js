@@ -442,7 +442,7 @@ describe('Проверяем подключение ноде', () => {
             let amount = "1.0000 SYS"
             let bets = []
             let tester = 'eosio'
-            console.log("Гипотезы: ", hypoId)
+            // console.log("Гипотезы: ", hypoId)
 
             it('Создаём топик', async () => {
               let result = await createGame(api, "bet", gameId, "Тестовый топик")
@@ -580,7 +580,7 @@ describe('Проверяем подключение ноде', () => {
               
               assert.exists(result, `Ошибка возврата ставки: ${result.message}`);
               assert.equal(parseFloat(res.amount), 3);
-            }).timeout(5000);;
+            }).timeout(5000);
 
            
             

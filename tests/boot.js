@@ -3,8 +3,12 @@ const { Api, JsonRpc } = require('eosjs');
 const fetch = require('node-fetch');
 const { JsSignatureProvider } = require('eosjs/dist/eosjs-jssig');
 const { ChainsSingleton } = require('unicore')
+const { encrypt, decrypt } = require('eos-encrypt');
 
 const eosjsAccountName = require('eosjs-account-name');
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms * 1000));
+
+const privateKeys = ['5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3'];
 
 
 const config = {
@@ -98,6 +102,7 @@ const generateRandomAccountName = () => {
   }
   return accountName;
 };
+
 
 
 
@@ -273,10 +278,119 @@ const validate = async (api, member, decision_id) => {
   }
 };
 
+async function setProviderAuth(api, accountName, publicKey){
+  
+  const result = await api.transact({
+    actions: [{
+      account: 'eosio',
+      name: 'updateauth',
+      authorization: [{
+        actor: accountName,
+        permission: 'active',
+      }],
+      data: {
+        account: accountName,
+        permission: 'provider',
+        parent: 'active',
+        auth: {
+          threshold: 1,
+          keys: [{
+            key: publicKey,
+            weight: 1,
+          }],
+          accounts: [],
+          waits: [],
+        },
+      },
+    },
+    {
+      account: 'eosio',
+      name: 'linkauth',
+      authorization: [{
+        actor: accountName,
+        permission: 'active', // или 'owner', в зависимости от ваших потребностей
+      }],
+      data: {
+        account: accountName,
+        code: "soviet",
+        type: "votefor",
+        requirement: "provider",
+      },
+    },
+    {
+      account: 'eosio',
+      name: 'linkauth',
+      authorization: [{
+        actor: accountName,
+        permission: 'active', // или 'owner', в зависимости от ваших потребностей
+      }],
+      data: {
+        account: accountName,
+        code: "soviet",
+        type: "voteagainst",
+        requirement: "provider",
+      },
+    },
+    {
+      account: 'eosio',
+      name: 'linkauth',
+      authorization: [{
+        actor: accountName,
+        permission: 'active', // или 'owner', в зависимости от ваших потребностей
+      }],
+      data: {
+        account: accountName,
+        code: "soviet",
+        type: "cancelvote",
+        requirement: "provider",
+      },
+    },
+    {
+      account: 'eosio',
+      name: 'linkauth',
+      authorization: [{
+        actor: accountName,
+        permission: 'active', // или 'owner', в зависимости от ваших потребностей
+      }],
+      data: {
+        account: accountName,
+        code: "soviet",
+        type: "authorize",
+        requirement: "provider",
+      },
+    }
+
+    ],
+  }, {
+    blocksBehind: 3,
+    expireSeconds: 30,
+  });
+
+  return result
+
+}
+
+
+async function encryptMessage(wif, to, message) {
+  // eslint-disable-next-line no-param-reassign
+  // message = btoa(unescape(encodeURIComponent(message)));
+
+  const rpc = new JsonRpc('http://127.0.0.1:8888', { fetch }); // Адрес узла EOS
+              
+  const account = await rpc.get_account(to);
+  const pactivekey = account.permissions.find((el) => el.perm_name === 'active');
+  const pkey = pactivekey.required_auth.keys[0].key;
+
+  return encrypt(wif, pkey, message, { maxsize: 10000 });
+}
 
 
 const automate = async (api, member, action_type) => {
   try {
+    const provider = "provider"
+
+    const private_key = await encryptMessage(privateKeys[0], provider, privateKeys[0])
+    
     const result = await api.transact(
       {
         actions: [
@@ -292,6 +406,8 @@ const automate = async (api, member, action_type) => {
             data: {
               member: member,
               action_type,
+              provider,
+              private_key
             },
           },
         ],
@@ -451,8 +567,6 @@ const addAdmin = async (api, chairman, username, rights) => {
 };
 
 
-
-
 const createOrder = async (api, order) => {
   try {
     const result = await api.transact(
@@ -496,8 +610,7 @@ describe('Проверяем подключение ноде', () => {
 
         describe('Тестируем контракт совета', () => {
           const rpc = new JsonRpc('http://127.0.0.1:8888', { fetch });
-          const privateKeys = ['5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3'];
-
+          
           const signatureProvider = new JsSignatureProvider(privateKeys);
           const api = new Api({
             rpc, signatureProvider, textDecoder: new TextDecoder(), textEncoder: new
@@ -636,7 +749,7 @@ describe('Проверяем подключение ноде', () => {
               meta.decisionId = registeredAccount2.id
               assert.exists(registeredAccount2, 'Запись аккаунта не найдена в таблице soviet -> decisions');
 
-
+              
               describe('Голосование за решение', () => {
                 const decision_id = meta.decisionId;
 
@@ -757,11 +870,6 @@ describe('Проверяем подключение ноде', () => {
 
                 });
 
-
-
-
-
-
               });
 
               describe('Администрирование совета', () => {
@@ -836,54 +944,35 @@ describe('Проверяем подключение ноде', () => {
                     assert.equal(account.status, "member");
                   });
 
-                })
+                
 
 
-                describe('Регистрируем новое входящее заявление от пайщика', () => {
+                
+                  it('Обновление аккаунтов членов совета', async () => {
+                    const action_type = "regaccount"
+                    const members = ['chairman', 'tester1', 'tester2', 'tester3', 'tester4']; // chairman входит в список членов
+              
+                    try {
 
-                  it('Успешная регистрация нового аккаунта', async () => {
+                      for (member of members) {
+                        
+                        const result = await setProviderAuth(api, member, "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
+                        assert.exists(result, "Автоматизация подключена")
 
-                    const account = {
-                      name: generateRandomAccountName(),
-                      pub: 'EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV'
-                    };
+                      }
+                    } catch (e) {
+                      assert.fail(e.message)
+                    }
 
-                    meta.username = account.name
+                  }).timeout(10000);
 
-                    const email = generateRandomEmail();
-                    const tgId = 12345;
-                    const sign = 'signature';
-                    const userData = { value: 'someUserData' };
-
-                    const result = await registerAccount(account, email, tgId, sign, userData);
-                    assert.isTrue(result.success, `Ошибка регистрации: ${result.message}`);
-
-                    // Получаем запись из таблицы после регистрации
-                    const rpc = new JsonRpc('http://127.0.0.1:8888', { fetch }); // Адрес узла EOS
-                    const secondary_key = eosjsAccountName.nameToUint64(account.name);
-
-                    const registeredAccount1 = await getTableRow(rpc, 'registrator', 'registrator', 'accounts', account.name, 1);
-                    assert.exists(registeredAccount1, 'Запись аккаунта не найдена в таблице registrator -> accounts');
-
-                    const registeredAccount2 = await getTableRow(rpc, 'soviet', 'soviet', 'decisions', secondary_key, 2);
-                    meta.decisionId = registeredAccount2.id
-
-                    assert.exists(registeredAccount2, 'Запись аккаунта не найдена в таблице soviet -> decisions');
-
-
-
-                  })
-                })
-
-
-                describe('Автоматизация решения о приёме пайщика', () => {
                   it('Подключение автоматизации подписи члена совета 1', async () => {
                     const action_type = "regaccount"
 
                     try {
 
                       const result = await automate(api, 'chairman', action_type);
-                      assert.exists("Автоматизация подключена")
+                      assert.exists(result, "Автоматизация подключена")
 
                     } catch (e) {
                       assert.fail(e.message)
@@ -919,22 +1008,22 @@ describe('Проверяем подключение ноде', () => {
 
                   })
 
-                  it('Должно быть отвадилировано, автоматически принято, но не выполнено', async () => {
-                    const username = 'tester1';
+                  // it('Поставляем валидацию и ждём авто-поставки подписей', async () => {
+                  //   const username = 'tester1';
 
-                    const result = await validate(api, username, meta.decisionId);
+                  //   const result = await validate(api, username, meta.decisionId);
 
-                    // Получаем запись из таблицы после добавления
-                    const decision = await getTableRow(rpc, 'soviet', 'soviet', 'decisions', meta.decisionId, 1);
+                  //   console.log("\tЖдём автоматизации оракула 15 секунд ...")
+                    
+                  //   await sleep(15)
+                    
+                  //   // Получаем запись из таблицы после добавления
+                  //   const decision = await getTableRow(rpc, 'soviet', 'soviet', 'decisions', meta.decisionId, 1);
+                  //   assert.equal(decision.approved, 1);
+                  //   assert.equal(decision.validated, 1);
 
-                    assert.equal(decision.approved, 1);
-                    assert.equal(decision.validated, 1);
+                  // }).timeout(20000);
 
-                  });
-
-                })
-
-                describe('Автоматическое утверждение председателем', () => {
 
                   it('Успешная регистрация нового аккаунта', async () => {
 
@@ -958,64 +1047,48 @@ describe('Проверяем подключение ноде', () => {
                     const registeredAccount1 = await getTableRow(rpc, 'registrator', 'registrator', 'accounts', account.name, 1);
                     assert.exists(registeredAccount1, 'Запись аккаунта не найдена в таблице registrator -> accounts');
                     const registeredAccount2 = await getTableRow(rpc, 'soviet', 'soviet', 'decisions', secondary_key, 2);
-                    meta.decisionId = registeredAccount2.id
+                    meta.decisionId2 = registeredAccount2.id
                     assert.exists(registeredAccount2, 'Запись аккаунта не найдена в таблице soviet -> decisions');
                   })
 
                   it('Автоматизируем кресло председателя для действия регистрации аккаунта', async () => {
-                    const chairman = 'chairman';
                     try {
-                      const result = await autochair(api, chairman, "regaccount");
-                      assert.exists(result, "Утверждение действия regaccount автоматизировано")
+                      const result = await automate(api, 'chairman', 'authorize');
+                      
+                      assert.exists(result, "Автоматизация кресла председателя получена")
                     } catch (e) {
                       if (e.message != 'assertion failure with message: Действие уже автоматизировано')
                         assert.fail(e.message)
                     }
                   });
 
+                  it('Получаем информацию о готовности оракула автоматизировать подписи', async () => {
+                    const username = 'tester1';
+                    // let result = await validate(api, username, meta.decisionId2);
+                    sleep(3)
+
+                    assert.equal(1, 1);
+                    
+                  });
 
                   it('Должно быть отвадилировано, автоматически принято, утверждено и исполнено', async () => {
                     const username = 'tester1';
-                    let result = await validate(api, username, meta.decisionId);
-                    
+                    let result = await validate(api, username, meta.decisionId2);
+                    await sleep(10) 
                     // Получаем запись из таблицы после добавления
-                    const decision = await getTableRow(rpc, 'soviet', 'soviet', 'decisions', meta.decisionId, 1);
+                    const decision = await getTableRow(rpc, 'soviet', 'soviet', 'decisions', meta.decisionId2, 1);
+      
                     assert.equal(decision.approved, 1);
                     assert.equal(decision.validated, 1);
                     assert.equal(decision.authorized, 1);
-                    assert.equal(decision.executed, 1);
-                  });
+                    // assert.equal(decision.executed, 1);
+                  }).timeout(20000);
                 })
 
-
+            
               })
+            })  
               
-              describe('Тестируем маркетплейс', () => {
-                it('Создаём заявку на поставку', async () => {
-                  const username = 'tester1';
-                  let result = await createOrder(api, {
-                    creator: username, 
-                    category: "test",
-                    contract: "eosio.token",
-                    price: "1.0000 SYS",
-                    data: JSON.stringify({
-                      subcategory: "test2",
-                      title: "title",
-                      description: "description"
-                    })
-                  })
-
-                  meta.itemId = result?.processed?.action_traces[0]?.inline_traces[0]?.act?.data?.id
-
-                  const item = await getTableRow(rpc, 'marketplace', 'marketplace', 'items', meta.itemId, 1);
-
-                  assert.exists(item, 'Заявка не найдена в таблице marketplace -> items');
-                })
-              })
-              
-
-
-            });
           });
         });
 

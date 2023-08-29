@@ -184,8 +184,11 @@ async function preActivate(eos, network){
 
   const axios = require('axios').default;
 
+  const blockhost = "http://localhost:8888"
+  // const blockhost = "http://159.69.213.95:8889"
+
   try{
-    let response = await axios.post("http://localhost:8888/v1/producer/schedule_protocol_feature_activations", {
+    let response = await axios.post(`${blockhost}/v1/producer/schedule_protocol_feature_activations`, {
         protocol_features_to_activate: ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]
     })
     console.log("ok -> init activation: ", response.data);

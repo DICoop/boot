@@ -139,8 +139,10 @@ async function fillRegistrator(){
   let eos = await get_pass_instance(network, 'init_key')
   
   for (token of tokens){
-    let result = await transfer_token(eos, token.contract, "eosio", "registrator", `10000.0000 ${process.env.CORE_TOKEN}`, "registrator")
-    console.log(`${result.status} -> registrator filled: ${result.message}`)
+    if(token.toRegistrator){
+      let result = await transfer_token(eos, token.contract, "eosio", "registrator", token.toRegistrator, "registrator")
+      console.log(`${result.status} -> registrator filled: ${result.message}`)
+    }
   }
   
 }

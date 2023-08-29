@@ -6,8 +6,9 @@
   "scripts": {
     "bet": "mocha tests/bet.js",
     "test": "mocha tests/boot.js",
+    "testmarket": "mocha tests/marketplace.js",
     "start": "node index.js",
-    "fulltest": "./scripts/purge_node.sh && ./scripts/launch_node.sh && node index.js && npm test"
+    "fulltest": "./scripts/purge_node.sh && ./scripts/launch_node.sh && node index.js && npm test && npm test && npm testmarket"
   },
   "author": "",
   "license": "ISC",
