@@ -1,14 +1,14 @@
 Arguments: 
-  /Users/darksun/.nvm/versions/node/v16.15.1/bin/node /usr/local/bin/yarn watch
+  /Users/darksun/.nvm/versions/node/v20.8.0/bin/node /usr/local/bin/yarn test
 
 PATH: 
-  /Users/darksun/.nvm/versions/node/v16.15.1/bin:/Users/darksun/.pyenv/shims:/Library/Frameworks/Python.framework/Versions/3.10/bin:/Library/Frameworks/Python.framework/Versions/3.9/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/MacGPG2/bin:/Users/darksun/ACLI
+  /Users/darksun/.nvm/versions/node/v20.8.0/bin:/opt/local/bin:/opt/local/sbin:/Library/Frameworks/Python.framework/Versions/3.10/bin:/Library/Frameworks/Python.framework/Versions/3.9/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/MacGPG2/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Users/darksun/.cargo/bin:/Users/darksun/ACLI
 
 Yarn version: 
   1.5.1
 
 Node version: 
-  16.15.1
+  20.8.0
 
 Platform: 
   darwin x64
@@ -20,23 +20,32 @@ npm manifest:
     "description": "Backend for registrator with email confirmation",
     "main": "index.js",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1",
-      "start": "node index.js"
+      "bet": "mocha tests/bet.js",
+      "test": "mocha tests/boot.js",
+      "testmarket": "mocha tests/marketplace.js",
+      "start": "node index.js",
+      "fulltest": "./scripts/purge_node.sh && ./scripts/launch_node.sh && node index.js && npm test && npm test && npm testmarket"
     },
     "author": "",
     "license": "ISC",
     "dependencies": {
       "@sendgrid/mail": "^6.3.1",
       "axios": "^0.27.2",
+      "bignumber.js": "^9.1.1",
+      "chai": "^4.3.7",
       "dotenv": "^8.0.0",
       "eosjs": "^20.0.3",
+      "eosjs-account-name": "^2.3.0",
       "eosjs-api": "^7.0.4",
+      "eosjs-ecc": "^4.0.7",
       "express": "^4.16.4",
       "fs": "0.0.1-security",
       "md5": "^2.2.1",
+      "mocha": "^10.2.0",
       "mongodb": "^3.2.3",
-      "node-fetch": "^2.6.1",
+      "node-fetch": "^2.6.12",
       "text-encoding": "^0.7.0",
+      "unicore": "github:unicore/uniJS",
       "util": "^0.12.4"
     }
   }
@@ -48,14 +57,16 @@ Lockfile:
   No lockfile
 
 Trace: 
-  Error: Command "watch" not found.
-      at new MessageError (/usr/local/lib/node_modules/yarn/lib/cli.js:186:110)
-      at /usr/local/lib/node_modules/yarn/lib/cli.js:87307:17
-      at Generator.next (<anonymous>)
-      at step (/usr/local/lib/node_modules/yarn/lib/cli.js:98:30)
-      at /usr/local/lib/node_modules/yarn/lib/cli.js:116:14
-      at new Promise (<anonymous>)
-      at new F (/usr/local/lib/node_modules/yarn/lib/cli.js:23451:28)
-      at /usr/local/lib/node_modules/yarn/lib/cli.js:95:12
-      at runCommand (/usr/local/lib/node_modules/yarn/lib/cli.js:87312:22)
-      at Object.<anonymous> (/usr/local/lib/node_modules/yarn/lib/cli.js:87412:14)
+  Error: Command failed.
+  Exit code: 1
+  Command: sh
+  Arguments: -c mocha tests/boot.js
+  Directory: /Users/darksun/dacom-code/foundation/boot
+  Output:
+  
+      at ProcessTermError.MessageError (/usr/local/lib/node_modules/yarn/lib/cli.js:186:110)
+      at new ProcessTermError (/usr/local/lib/node_modules/yarn/lib/cli.js:226:113)
+      at ChildProcess.<anonymous> (/usr/local/lib/node_modules/yarn/lib/cli.js:30281:17)
+      at ChildProcess.emit (node:events:514:28)
+      at maybeClose (node:internal/child_process:1105:16)
+      at ChildProcess._handle.onexit (node:internal/child_process:305:5)

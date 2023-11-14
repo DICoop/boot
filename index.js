@@ -129,22 +129,18 @@ async function createTokens() {
     token.result = await create_token(eos, token)
     console.log(`${token.result.status}`, " -> token created: ", token.symbol, " -> ", "contract -> ", token.contract, " -> ", token.result.message)
   }
-
-
 }
 
-
-async function fillRegistrator(){
+async function fillRegistrator() {
   let tokens = await get_tokens_data(network)
   let eos = await get_pass_instance(network, 'init_key')
   
   for (token of tokens){
     if(token.toRegistrator){
-      let result = await transfer_token(eos, token.contract, "eosio", "registrator", token.toRegistrator, "registrator")
+      let result = await transfer_token(eos, token.contract, "eosio", "registrator", token.toRegistrator, token.registrator)
       console.log(`${result.status} -> registrator filled: ${result.message}`)
     }
-  }
-  
+  } 
 }
 
 async function set_all_refs() {

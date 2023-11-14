@@ -26,8 +26,8 @@ docker run --name node -d -p 8888:8888 -p 9876:9876 \
 -v ~/testnet/config:/mnt/dev/config \
 -v ~/testnet/wallet:/root/eosio-wallet \
 -v $dir/../../contracts:/mnt/dev/contracts \
-dacomfoundation/leap_v4.0.4 \
+dicoop/leap_v4.0.4 \
 /bin/bash -c '/usr/bin/nodeos -d /mnt/dev/data -p eosio --config-dir /mnt/dev/config --disable-replay-opts'
 
 echo "Контейнер node установлен - блокчейн запущен."
-sleep 5
+sleep 10

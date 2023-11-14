@@ -104,10 +104,15 @@ var config = {
       contract: "eosio.token",
       issuer: "eosio",
       max_supply: "461168601842738.7903 AXON",
+      registrator: "ano",
       toRegistrator: "20000.0000 AXON",
       allocation: [{
         username: "eosio",
         amount: "250000.0000 AXON"
+      },
+      {
+        username: "ano",
+        amount: "1000.0000 AXON"
       },
       {
         username: "alfatest",
@@ -186,6 +191,12 @@ var config = {
 
     list: [
       {
+        username: 'ano',
+        code_permissions_to: ["ano"],
+        ram_kbytes: 2024,
+        is_contract: true,
+      },
+      {
         username: 'withdrawer',
         code_permissions_to: ["withdrawer"],
         ram_kbytes: 2024,
@@ -200,7 +211,7 @@ var config = {
       {
         username: 'soviet',
         code_permissions_to: ["soviet"],
-        ram_kbytes: 1024,
+        ram_kbytes: 10240,
         is_contract: true,
       },
       {
@@ -212,6 +223,12 @@ var config = {
       {
         username: 'bet',
         code_permissions_to: ["bet"],
+        ram_kbytes: 1024,
+        is_contract: true,
+      },
+      {
+        username: 'draft',
+        code_permissions_to: ["draft"],
         ram_kbytes: 1024,
         is_contract: true,
       },
@@ -332,6 +349,12 @@ var config = {
         username: 'rater',
         code_permissions_to: [],
         is_contract: true,
+        ram_kbytes: 32,
+      },
+      {
+        username: 'dc',
+        code_permissions_to: [],
+        referer: "part",
         ram_kbytes: 32,
       },
       {

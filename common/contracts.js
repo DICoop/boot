@@ -166,6 +166,22 @@ var contracts = [
           "output_name" : "bet",
           "cdt" : "v1.7.0",
           "networks": {"master" : "bet"},
+        },
+        {
+          "name" : "ano",
+          "path" : "/Users/darksun/dacom-code/foundation/contracts/ano",
+          "main_file" : "ano.cpp",
+          "output_name" : "ano",
+          "cdt" : "v1.7.0",
+          "networks": {"master" : "ano"},
+        },
+        {
+          "name" : "draft",
+          "path" : "/Users/darksun/dacom-code/foundation/contracts/draft",
+          "main_file" : "draft.cpp",
+          "output_name" : "draft",
+          "cdt" : "v1.7.0",
+          "networks": {"master" : "draft"},
         }
         
       ];
