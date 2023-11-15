@@ -1,7 +1,7 @@
 const fs = require('fs');
 const {Serialize} = require(`eosjs`)
 const axios = require('axios').default;
-
+const get_network_params = require('./networks')
 var {get_accounts} = require("./config.js");                                                                        // 
 // var Serialize = eosjs.Serialize;
                                                                                                                     // 
@@ -83,7 +83,6 @@ var features = [
         "hash": "6bcb40a24e49c26d0a60513b6aeb8551d264e4717f306b81a37a5afb3b47cedc"
     }
 ]
-
 
 
 var contracts = [
@@ -182,6 +181,14 @@ var contracts = [
           "output_name" : "draft",
           "cdt" : "v1.7.0",
           "networks": {"master" : "draft"},
+        },
+        {
+          "name" : "gateway",
+          "path" : "/Users/darksun/dacom-code/foundation/contracts/gateway",
+          "main_file" : "gateway.cpp",
+          "output_name" : "gateway",
+          "cdt" : "v1.7.0",
+          "networks": {"master" : "gateway"},
         }
         
       ];
@@ -199,12 +206,12 @@ async function getContractTarget(contract, network) {
 async function preActivate(eos, network){
 
   const axios = require('axios').default;
-
-  const blockhost = "http://localhost:8888"
-  // const blockhost = "http://159.69.213.95:8889"
-
-  try{
-    let response = await axios.post(`${blockhost}/v1/producer/schedule_protocol_feature_activations`, {
+  const net = await get_network_params(network)
+  
+  const url = net.protocol + '://' + net.host + net.port 
+  
+  try {
+    let response = await axios.post(`${url}/v1/producer/schedule_protocol_feature_activations`, {
         protocol_features_to_activate: ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]
     })
     console.log("ok -> init activation: ", response.data);
@@ -214,8 +221,7 @@ async function preActivate(eos, network){
   }
 
   await sleep(1000)
-  let boot = await setContract(eos, "eosio.boot", network)
-  console.log("boot: ", boot)
+  let boot = await setContract(eos, "eosio.boot", "eosio", network)
   
   eos = await get_pass_instance(network, 'init_key')
   
@@ -225,7 +231,7 @@ async function preActivate(eos, network){
 
 }
 
-async function setAllContracts(eos, network) {
+async function setAllContracts(eos, network, targets) {
   
   //TODO 
   //activate feature
@@ -233,31 +239,38 @@ async function setAllContracts(eos, network) {
 
   var promises = []
   var k = 0
-  for (contract of contracts){
-    if (contract.name != 'eosio.boot'){
-      contract.result = await setContract(eos, contract.name, network)
-      if (contract.result.status == 'error') {
-        contract.result = await setContract(eos, contract.name, network)
-        if (contract.result.status == 'error') {
-          contract.result = await setContract(eos, contract.name, network)
+
+  for (const entry of targets) {
+
+    let contract = Object.keys(entry)[0];
+    let target = entry[contract];
+    
+    if (contract != 'eosio.boot') {
+
+      let result = await setContract(eos, contract, target, network)
+      
+      if (result.status == 'error') {
+        result = await setContract(eos, contract, target, network)
+        if (result.status == 'error') {
+          result = await setContract(eos, contract, target, network)
         }
       }
 
-      console.log(contract.result.status, '-> set contract: ', k + ' | ' + contracts.length, " -> ", contract.name, ' -> ', contract.result.message)
+      console.log(result.status, '-> set contract: ', k + ' | ' + Object.entries(targets).length, " -> ", contract, ' -> ', target, ' -> ', result.message)
     
       k++
     }
+  
   }
-  return contracts
   
 
 }
 
-async function setContract(eos, contract, network) {
+async function setContract(eos, contract, target, network) {
     return new Promise(async (resolve, reject) => {
+
       var contract_object = contracts.find(el => el.name == contract)
       
-      var target = await getContractTarget(contract, network)
       // console.log("TARGET", target)
       var wasm_path = contract_object.path + '/' + contract_object.output_name + '.wasm'
       var abi_path = contract_object.path  + '/' + contract_object.output_name + '.abi'
@@ -265,7 +278,6 @@ async function setContract(eos, contract, network) {
       const wasm = fs.readFileSync(wasm_path)
       const abi = fs.readFileSync(abi_path)
       
-      // console.log("EOS", eos.abiTypes)
       const buffer = new Serialize.SerialBuffer({
           textEncoder: eos.textEncoder,
           textDecoder: eos.textDecoder,
@@ -323,10 +335,10 @@ async function setContract(eos, contract, network) {
         blocksBehind: 6,
         expireSeconds: 30,
       }).then(res => {
-        // console.log("setContract", res)
+        
         resolve({status: 'ok', message: res.transaction_id})
       }).catch(e => {
-        // console.log(e.message)
+        console.log(e.message)
         resolve({status: 'error', message: e.message})
       })
   })

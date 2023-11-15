@@ -5,7 +5,7 @@ const base_path = "http://127.0.0.1:" + process.env.PORT
 
 var get_pass_instance = require("./common/eos.js");
 
-var {get_tokens_data, get_core_token, get_init_market_amount, get_accounts, get_core_system_percent, get_core_contract, get_operator_system_percent, get_partners_contract, get_producer_key} = require("./common/config.js");
+var {get_config, get_tokens_data, get_core_token, get_init_market_amount, get_accounts, get_core_system_percent, get_core_contract, get_operator_system_percent, get_partners_contract, get_producer_key} = require("./common/config.js");
 
 var {initCoreContract, setupAllHosts, setupGoals, setupTasks, setP2Prate, activateP2P, setupHost, depositToCurrentPool,refreshAllBalances, withdrawAllBalances, getLiquidBalance, pair, startHost, setFunds} = require("./common/core.js");
 var {register_accounts1, register_accounts2, buy_resources, set_code_permissions, set_ref} = require('./common/accounts.js');
@@ -16,7 +16,9 @@ const {goalTest} = require("./tests/goals")
 const {AuctionTest} = require("./tests/auction")
 const {distributionTest} = require("./tests/labor")
 
-var network =  "master"
+var network =  process.env.NETWORK || 'master'
+console.log("NETWORK: ", network)
+
   
 async function registerBaseAccounts() {
 
@@ -39,11 +41,11 @@ async function registerBaseAccounts() {
 
 
 
-async function set_all_contracts(){
+async function set_all_contracts(config){
 
   let eos = await get_pass_instance(network, 'main_key')
-
-  let result = await setAllContracts(eos, network)
+  console.log(config.targets)
+  let result = await setAllContracts(eos, network, config.targets)
 
 }
 
@@ -138,7 +140,7 @@ async function fillRegistrator() {
   for (token of tokens){
     if(token.toRegistrator){
       let result = await transfer_token(eos, token.contract, "eosio", "registrator", token.toRegistrator, token.registrator)
-      console.log(`${result.status} -> registrator filled: ${result.message}`)
+      console.log(`${result.status} -> registrator ${token.registrator} filled for ${token.toRegistrator}: ${result.message}`)
     }
   } 
 }
@@ -211,11 +213,12 @@ function generateAccount(){
 async function init(skip) {
   let eos = await get_pass_instance(network, 'init_key')
   
+  const config = await get_config(network)
   
-  if (!skip){
+  if (!skip) {
     await registerBaseAccounts()
     
-    await set_all_contracts()
+    await set_all_contracts(config)
     
     await createTokens()
     await issueTokens()

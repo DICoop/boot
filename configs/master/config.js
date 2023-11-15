@@ -8,6 +8,22 @@ var config = {
   partners_contract: "partners",
   core_system_percent: 50,
   operator_system_percent: 50,
+  coopname: "testcoop",
+  coopsymbol: "RUB",
+  coopcontract: "testtoken",
+  targets: [
+
+    { "eosio.token": "eosio.token" },
+    { "registrator": "registrator" },
+    { "ano": "anotest" },
+    // { "registrator": "regtest" },
+    { "eosio.boot": "eosio" },
+    { "eosio.system": "eosio" },
+    { "soviet": "soviettest" },
+    { "marketplace": "markettest" },
+    { "draft": "drafttest" },
+    { "gateway": "gatetest"}
+  ],
   p2p: {
     coreUsdRate: 1,
     distributionRate: 3.3,
@@ -166,18 +182,7 @@ var config = {
     //     amount: "1000000000.0000 TEST"
     //   }
     //   ]  
-    // },{
-    //   symbol: "0.0000 RUB",
-    //   contract: "eosio.token",
-    //   issuer: "eosio",
-    //   max_supply: "461168601842738.7903 RUB",
-    //   allocation: [
-    //   {
-    //     username: "alfatest",
-    //     amount: "1000000000.0000 RUB"
-    //   }
-    //   ]  
-    // }
+    // },
   ],
 
   accounts : {
@@ -191,16 +196,9 @@ var config = {
 
     list: [
       {
-        username: 'ano',
-        code_permissions_to: ["ano"],
-        ram_kbytes: 2024,
-        is_contract: true,
-      },
-      {
-        username: 'withdrawer',
-        code_permissions_to: ["withdrawer"],
-        ram_kbytes: 2024,
-        is_contract: true,
+        username: 'anotest',
+        code_permissions_to: [],
+        ram_kbytes: 32,
       },
       {
         username: 'reserve',
@@ -209,26 +207,8 @@ var config = {
         is_contract: true,
       },
       {
-        username: 'soviet',
-        code_permissions_to: ["soviet"],
-        ram_kbytes: 10240,
-        is_contract: true,
-      },
-      {
-        username: 'marketplace',
-        code_permissions_to: ["marketplace"],
-        ram_kbytes: 1024,
-        is_contract: true,
-      },
-      {
         username: 'bet',
         code_permissions_to: ["bet"],
-        ram_kbytes: 1024,
-        is_contract: true,
-      },
-      {
-        username: 'draft',
-        code_permissions_to: ["draft"],
         ram_kbytes: 1024,
         is_contract: true,
       },
@@ -323,19 +303,6 @@ var config = {
         referer: "part"
       }, 
       {
-        username: 'p2p',
-        code_permissions_to: ["p2p"],
-        is_contract: true,
-        ram_kbytes: 2024,
-        referer: "part"
-      }, 
-      {
-        username: 'log',
-        code_permissions_to: [],
-        is_contract: true,
-        ram_kbytes: 1024,
-      }, 
-      {
         username: 'provider',
         code_permissions_to: [],
       }, 
@@ -398,12 +365,6 @@ var config = {
         code_permissions_to: [],
         ram_kbytes: 32,
       },
-      {
-        username: 'gateway',
-        code_permissions_to: [],
-        ram_kbytes: 32,
-      },
-      
     ]
   },
 

@@ -184,7 +184,6 @@ async function buy_resources(eos, network, account) {
         resolve({status: 'ok', message: trx.transaction_id})
 
       }).catch(e => {
-        console.error(account, e)
         resolve({status: 'error', message: e.message})
 
       })

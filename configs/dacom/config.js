@@ -1,13 +1,28 @@
 var config = {
-  init_key: "5JkVKgCk1ARftYnRndRUsYrpiGV5QjqstfNFXBikTxyvFZ53ocd",
-  main_key: "5JkVKgCk1ARftYnRndRUsYrpiGV5QjqstfNFXBikTxyvFZ53ocd",
-  producer_key: "EOS812BiqaJ7KTSLTBhvwWnLGe9rQjiraJWCVmUsGnjNHXJqggW7K",
+  init_key: "",
+  main_key: "",
+  producer_key: "EOS8kNnDfyyFJ8LP9KkmmjAC7o8UVKuge44HSwMREUXKCkoSNAh53",
   core_token: "4,AXON",
   init_market_amount: 50000000000,
   main_core_contract: "unicore",
   partners_contract: "partners",
   core_system_percent: 50,
   operator_system_percent: 50,
+  coopname: "testcoop",
+  coopsymbol: "TESTRUB",
+  coopcontract: "testtoken",
+  targets: [
+    { "eosio.token": "eosio.token" },
+    { "registrator": "registrator" },
+    { "ano": "anotest" },
+    // { "registrator": "regtest" },
+    { "eosio.boot": "eosio" },
+    { "eosio.system": "eosio" },
+    { "soviet": "soviettest" },
+    { "marketplace": "markettest" },
+    { "draft": "drafttest" },
+    { "gateway": "gatetest"} 
+  ],
   p2p: {
     coreUsdRate: 1,
     distributionRate: 3.3,
@@ -104,15 +119,32 @@ var config = {
       contract: "eosio.token",
       issuer: "eosio",
       max_supply: "461168601842738.7903 AXON",
+      registrator: "registrator",
       toRegistrator: "20000.0000 AXON",
       allocation: [{
         username: "eosio",
-        amount: "5000.0000 AXON"
+        amount: "250000.0000 AXON"
       },
-      // {
-      //   username: "alfatest",
-      //   amount: "1000.0000 AXON"
-      // }
+      {
+        username: "anotest",
+        amount: "1000.0000 AXON"
+      },
+      {
+        username: "alfatest",
+        amount: "1000.0000 AXON"
+      },
+      {
+        username: "tester1",
+        amount: "1000.0000 AXON"
+      },
+      {
+        username: "tester2",
+        amount: "1000.0000 AXON"
+      },
+      {
+        username: "tester",
+        amount: "1000.0000 AXON"
+      }
       ]  
     },
     // {
@@ -149,26 +181,15 @@ var config = {
     //     amount: "1000000000.0000 TEST"
     //   }
     //   ]  
-    // },{
-    //   symbol: "0.0000 RUB",
-    //   contract: "eosio.token",
-    //   issuer: "eosio",
-    //   max_supply: "461168601842738.7903 RUB",
-    //   allocation: [
-    //   {
-    //     username: "alfatest",
-    //     amount: "1000000000.0000 RUB"
-    //   }
-    //   ]  
-    // }
+    // },
   ],
 
   accounts : {
     
     params: {
-      default_key: "EOS812BiqaJ7KTSLTBhvwWnLGe9rQjiraJWCVmUsGnjNHXJqggW7K",
-      default_net_weight: '1.0000 AXON',
-      default_cpu_weight: '1.0000 AXON',
+      default_key: "",
+      default_net_weight: '5.0000 AXON',
+      default_cpu_weight: '5.0000 AXON',
       default_ram_kbytes: 16,
     },
 
@@ -182,18 +203,6 @@ var config = {
       {
         username: 'reserve',
         code_permissions_to: ["reserve"],
-        ram_kbytes: 1024,
-        is_contract: true,
-      },
-      {
-        username: 'soviet',
-        code_permissions_to: ["soviet"],
-        ram_kbytes: 1024,
-        is_contract: true,
-      },
-      {
-        username: 'marketplace',
-        code_permissions_to: ["marketplace"],
         ram_kbytes: 1024,
         is_contract: true,
       },
@@ -294,17 +303,8 @@ var config = {
         referer: "part"
       }, 
       {
-        username: 'p2p',
-        code_permissions_to: ["p2p"],
-        is_contract: true,
-        ram_kbytes: 2024,
-        referer: "part"
-      }, 
-      {
-        username: 'log',
+        username: 'provider',
         code_permissions_to: [],
-        is_contract: true,
-        ram_kbytes: 1024,
       }, 
       {
         username: 'notifier',
@@ -316,6 +316,12 @@ var config = {
         username: 'rater',
         code_permissions_to: [],
         is_contract: true,
+        ram_kbytes: 32,
+      },
+      {
+        username: 'dc',
+        code_permissions_to: [],
+        referer: "part",
         ram_kbytes: 32,
       },
       {
@@ -359,12 +365,6 @@ var config = {
         code_permissions_to: [],
         ram_kbytes: 32,
       },
-      {
-        username: 'gateway',
-        code_permissions_to: [],
-        ram_kbytes: 32,
-      },
-      
     ]
   },
 

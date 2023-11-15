@@ -3,15 +3,17 @@ var networks = {
   "master" : {
     "protocol" : "http",
     "host" : "localhost",
-    "port" : ":8888"
+    "port" : ":8888",
+    "registrator": "http://127.0.0.1:5010"
   },
   "dacom" : {
     // "protocol" : "http",
     // "host" : "localhost",
     // "port" : ":8888"
     "protocol" : "http",
-    "host" : "159.69.213.95",
-    "port" : ":8889"
+    "host" : "92.63.96.109",
+    "port" : ":8888",
+    "registrator": "https://test.intellect.run/api"
   },
   "uni" : {
     "protocol" : "http",
