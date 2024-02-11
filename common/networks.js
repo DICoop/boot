@@ -13,7 +13,7 @@ var networks = {
     "protocol" : "http",
     "host" : "92.63.96.109",
     "port" : ":8888",
-    "registrator": "https://test.intellect.run/api"
+    "registrator": "https://testnet1.copenomics.world/api"
   },
   "uni" : {
     "protocol" : "http",

@@ -139,8 +139,10 @@ async function fillRegistrator() {
   
   for (token of tokens){
     if(token.toRegistrator){
-      let result = await transfer_token(eos, token.contract, "eosio", "registrator", token.toRegistrator, token.registrator)
+      let result = await transfer_token(eos, token.contract, "eosio", token.registrator_contract, token.toRegistrator, token.registrator)
       console.log(`${result.status} -> registrator ${token.registrator} filled for ${token.toRegistrator}: ${result.message}`)
+      result = await transfer_token(eos, token.contract, "eosio", token.registrator_contract, token.toRegistrator, token.registrator2)
+      console.log(`${result.status} -> registrator2 ${token.registrator2} filled for ${token.toRegistrator}: ${result.message}`)
     }
   } 
 }

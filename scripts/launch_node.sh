@@ -29,5 +29,7 @@ docker run --name node -d -p 8888:8888 -p 9876:9876 \
 dicoop/leap_v4.0.4 \
 /bin/bash -c '/usr/bin/nodeos -d /mnt/dev/data -p eosio --config-dir /mnt/dev/config --disable-replay-opts'
 
+docker network connect hyperion node
+
 echo "Контейнер node установлен - блокчейн запущен."
 sleep 10

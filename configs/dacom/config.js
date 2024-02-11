@@ -1,6 +1,6 @@
 var config = {
-  init_key: "",
-  main_key: "",
+  init_key: "5JoNYmWXTUUPd17Q5YuHBnzb9AsoPFrZftC1eSpTtt56UGzkgLS",
+  main_key: "5JoNYmWXTUUPd17Q5YuHBnzb9AsoPFrZftC1eSpTtt56UGzkgLS",
   producer_key: "EOS8kNnDfyyFJ8LP9KkmmjAC7o8UVKuge44HSwMREUXKCkoSNAh53",
   core_token: "4,AXON",
   init_market_amount: 50000000000,
@@ -9,19 +9,21 @@ var config = {
   core_system_percent: 50,
   operator_system_percent: 50,
   coopname: "testcoop",
-  coopsymbol: "TESTRUB",
+  chairman: "chairman",//TODO ADD IT
+  coopsymbol: "RUB",
   coopcontract: "testtoken",
   targets: [
+    //CHANGE IT!
     { "eosio.token": "eosio.token" },
-    { "registrator": "registrator" },
-    { "ano": "anotest" },
+    { "registrator": "regtest1" },
+    { "ano": "anotest1" },
     // { "registrator": "regtest" },
     { "eosio.boot": "eosio" },
     { "eosio.system": "eosio" },
-    { "soviet": "soviettest" },
-    { "marketplace": "markettest" },
-    { "draft": "drafttest" },
-    { "gateway": "gatetest"} 
+    { "soviet": "soviettest1" },
+    { "marketplace": "markettest1" },
+    { "draft": "drafttest1" },
+    { "gateway": "gatetest1"}
   ],
   p2p: {
     coreUsdRate: 1,
@@ -119,14 +121,16 @@ var config = {
       contract: "eosio.token",
       issuer: "eosio",
       max_supply: "461168601842738.7903 AXON",
-      registrator: "registrator",
-      toRegistrator: "20000.0000 AXON",
+      registrator_contract: 'regtest1', //CHANGE IT!
+      registrator: "anotest1",  //CHANGE IT!
+      registrator2: "testcoop",
+      toRegistrator: "10000.0000 AXON",
       allocation: [{
         username: "eosio",
         amount: "250000.0000 AXON"
       },
       {
-        username: "anotest",
+        username: "ano",
         amount: "1000.0000 AXON"
       },
       {
@@ -187,18 +191,17 @@ var config = {
   accounts : {
     
     params: {
-      default_key: "",
+      default_key: "EOS8kNnDfyyFJ8LP9KkmmjAC7o8UVKuge44HSwMREUXKCkoSNAh53",
       default_net_weight: '5.0000 AXON',
       default_cpu_weight: '5.0000 AXON',
       default_ram_kbytes: 16,
     },
 
     list: [
-      {
-        username: 'withdrawer',
-        code_permissions_to: ["withdrawer"],
-        ram_kbytes: 2024,
-        is_contract: true,
+    {
+        username: 'anotest1', //CHANGE IT!
+        code_permissions_to: ['anotest1'],
+        ram_kbytes: 32,
       },
       {
         username: 'reserve',
@@ -247,10 +250,6 @@ var config = {
         code_permissions_to: [],
       },
       {
-        username: 'chairman',
-        code_permissions_to: ['soviet'],
-      },
-      {
         username: 'eosio.vpay',
         code_permissions_to: [],
       },
@@ -296,8 +295,8 @@ var config = {
         referer: "",
       },
       {
-        username: 'registrator',
-        code_permissions_to: ["registrator"],
+        username: 'regtest1',
+        code_permissions_to: ["regtest1"],
         is_contract: true,
         ram_kbytes: 1024,
         referer: "part"
@@ -365,6 +364,7 @@ var config = {
         code_permissions_to: [],
         ram_kbytes: 32,
       },
+      
     ]
   },
 

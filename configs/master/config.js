@@ -9,20 +9,21 @@ var config = {
   core_system_percent: 50,
   operator_system_percent: 50,
   coopname: "testcoop",
+  chairman: "chairman",//TODO ADD IT
   coopsymbol: "RUB",
   coopcontract: "testtoken",
   targets: [
-
+    //CHANGE IT!
     { "eosio.token": "eosio.token" },
-    { "registrator": "registrator" },
-    { "ano": "anotest" },
+    { "registrator": "regtest1" },
+    { "ano": "anotest1" },
     // { "registrator": "regtest" },
     { "eosio.boot": "eosio" },
     { "eosio.system": "eosio" },
-    { "soviet": "soviettest" },
-    { "marketplace": "markettest" },
-    { "draft": "drafttest" },
-    { "gateway": "gatetest"}
+    { "soviet": "soviettest1" },
+    { "marketplace": "markettest1" },
+    { "draft": "drafttest1" },
+    { "gateway": "gatetest1"}
   ],
   p2p: {
     coreUsdRate: 1,
@@ -120,8 +121,10 @@ var config = {
       contract: "eosio.token",
       issuer: "eosio",
       max_supply: "461168601842738.7903 AXON",
-      registrator: "ano",
-      toRegistrator: "20000.0000 AXON",
+      registrator_contract: 'regtest1', //CHANGE IT!
+      registrator: "anotest1",  //CHANGE IT!
+      registrator2: "testcoop",
+      toRegistrator: "10000.0000 AXON",
       allocation: [{
         username: "eosio",
         amount: "250000.0000 AXON"
@@ -195,9 +198,9 @@ var config = {
     },
 
     list: [
-      {
-        username: 'anotest',
-        code_permissions_to: [],
+    {
+        username: 'anotest1', //CHANGE IT!
+        code_permissions_to: ['anotest1'],
         ram_kbytes: 32,
       },
       {
@@ -247,10 +250,6 @@ var config = {
         code_permissions_to: [],
       },
       {
-        username: 'chairman',
-        code_permissions_to: ['soviet'],
-      },
-      {
         username: 'eosio.vpay',
         code_permissions_to: [],
       },
@@ -296,8 +295,8 @@ var config = {
         referer: "",
       },
       {
-        username: 'registrator',
-        code_permissions_to: ["registrator"],
+        username: 'regtest1',
+        code_permissions_to: ["regtest1"],
         is_contract: true,
         ram_kbytes: 1024,
         referer: "part"
@@ -365,6 +364,7 @@ var config = {
         code_permissions_to: [],
         ram_kbytes: 32,
       },
+      
     ]
   },
 

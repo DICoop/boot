@@ -14,7 +14,7 @@ const {buy_resources, set_code_permissions} = require('../common/accounts')
 const eosjsAccountName = require('eosjs-account-name');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms * 1000));
 
-let privateKeys = ['5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3'];
+let privateKeys = ['5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3', '5JoNYmWXTUUPd17Q5YuHBnzb9AsoPFrZftC1eSpTtt56UGzkgLS'];
 var network =  process.env.NETWORK || 'master'
 var network_params
 var network_config
@@ -29,8 +29,6 @@ const getTarget = name => {
   return found ? found[name] : undefined;
 };
 
-
-
 async function generateKeypair(username) {
     let privateKey = await ecc.randomKey()
     privateKeys = [...privateKeys, privateKey]
@@ -43,7 +41,7 @@ async function generateKeypair(username) {
         TextEncoder()
     });
 
-    console.log("\tcoopname: ", username)
+    console.log("\tusername: ", username)
     console.log("\tprivateKey: ", privateKey)
     console.log("\tpublicKey: ", publicKey)
     
@@ -58,8 +56,8 @@ async function registerAccount(account) {
         active_pub: account.pub,
         owner_pub: account.pub,
         username: account.name,
-        coop_id: account.coop_id
-      
+        coop_id: account.coop_id,
+        signature_hash: account.signature_hash
     });
 
     const { status, message } = response.data;
@@ -118,6 +116,24 @@ const generateRandomAccountName = () => {
   }
   return accountName;
 };
+
+
+async function printWallet(rpc, coopname, username, who) {
+  // console.log(rpc, getTarget('soviet'), getTarget('soviet'), 'participants', username, 1)
+
+  const participant = await getTableRow(rpc, getTarget('soviet'), coopname, 'participants', username, 1);
+
+  const program_wallet = await getTableRow(rpc, getTarget('soviet'), coopname, 'wallets', username, 2);
+
+  console.log(`\t_______________`)
+  console.log(`\tкошелёк аккаунта ${who} ${username}: `)
+  console.log(`\t\tдоступно: ${participant.available}`)
+  console.log(`\t\tзаблокировано: ${participant.blocked}`)
+  console.log(`\t\t\tнайдено в программах: ${program_wallet ? program_wallet.available : '-'}`)
+
+  console.log(`\t_______________`)
+  
+}
 
 
 
@@ -193,6 +209,43 @@ const votefor = async (targets, api, coopname, member, decision_id) => {
 
 
 
+const accept = async (api, coopname, member, exchange_id, document) => {
+  try {
+    const result = await api.transact(
+      {
+        actions: [
+          {
+            account: getTarget('marketplace'), // Имя контракта
+            name: 'accept', // Имя метода
+            authorization: [
+              {
+                actor: member, // Имя аккаунта, отправляющего транзакцию
+                permission: 'active',
+              },
+            ],
+            data: {
+              coopname, 
+              username,
+              exchange_id,
+              document
+            },
+          },
+        ],
+      },
+      {
+        blocksBehind: 3,
+        expireSeconds: 30,
+      }
+    );
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+
 
 const regindivid = async (targets, api, coop_id, username) => {
   try {
@@ -204,16 +257,16 @@ const regindivid = async (targets, api, coop_id, username) => {
             name: 'reguser', // Имя метода
             authorization: [
               {
-                actor: username, // Имя аккаунта, отправляющего транзакцию
+                actor: meta.coopname, // Имя аккаунта, отправляющего транзакцию
                 permission: 'active',
               },
             ],
             data: {
-              registrator: "registrator",
+              coopname: meta.coopname,
               username: username, 
               storage: {
-                storage_username: "registrator",
-                uid: "testuid",
+                storage_username: meta.coopname,
+                uid: "",
               },
               // profile: JSON.stringify({
               //   first_name: '[xxx]',
@@ -247,30 +300,32 @@ const regindivid = async (targets, api, coop_id, username) => {
 
 const joincoop = async (targets, api, coopname, username) => {
   try {
-    const result = await api.transact(
-      {
-        actions: [
+    const actions = [
           {
             account: getTarget('registrator'), // Имя контракта
             name: 'joincoop', // Имя метода
             authorization: [
               {
-                actor: username, // Имя аккаунта, отправляющего транзакцию
+                actor: coopname, // Имя аккаунта, отправляющего транзакцию
                 permission: 'active',
               },
             ],
             data: {
               coopname: coopname,
               username: username, 
-              signed_doc: {
+              document: {
                   hash: "hash",
                   pkey: "pkey",
                   sign: "sign", 
-                  vars: "vars", 
+                  meta: "meta", 
               },
             },
           },
-        ],
+        ]
+
+    const result = await api.transact(
+      {
+        actions
       },
       {
         blocksBehind: 3,
@@ -510,6 +565,31 @@ function findAction(data, actionName) {
 }
 
 
+function findActions(data, actionName) {
+  const result = []
+
+  // Вспомогательная функция для рекурсивного поиска
+  function searchTraces(traces) {
+    for (const trace of traces) {
+      if (trace.act.name === actionName) {
+        result.push(trace.act)
+      }
+      if (trace.inline_traces && trace.inline_traces.length) {
+        searchTraces(trace.inline_traces);
+      }
+    }
+    return result;
+  }
+
+  // Начальный вызов для processed.action_traces
+  if (data?.processed?.action_traces) {
+    return searchTraces(data.processed.action_traces);
+  }
+
+  return result;
+}
+
+
 function findConsoleResponses(data) {
   const responses = [];
 
@@ -532,6 +612,10 @@ function findConsoleResponses(data) {
 
     if (data.processed.action_traces) {
       data.processed.action_traces.forEach(searchTraces);
+    }
+
+    if (data.processed.inline_traces) {
+      data.processed.inline_traces.forEach(searchTraces);
     }
   }
 
@@ -662,7 +746,7 @@ const exec = async (targets, api, coopname, member, decision_id) => {
 
 
 
-const authorize = async (targets, api, coopname, member, decision_id) => {
+const authorize = async (targets, api, coopname, member, decision_id, hash, pkey, sign, meta) => {
   try {
     const result = await api.transact(
       {
@@ -680,6 +764,12 @@ const authorize = async (targets, api, coopname, member, decision_id) => {
               coopname,
               chairman: member,
               decision_id,
+              document: {
+                hash: hash || "hash",
+                pkey: pkey || "pkey",
+                sign: sign || "sign",
+                meta: meta || "meta"
+              }
             },
           },
         ],
@@ -768,6 +858,7 @@ const create = async (targets, contract, api, to, quantity, memo) => {
 
 const issue = async (targets, contract, api, to, quantity, memo) => {
   try {
+    console.log("\tвыпущено на контракт: ", contract, " пользователю: ", to, quantity)
     const result = await api.transact(
       {
         actions: [
@@ -954,7 +1045,8 @@ async function init(){
 
             // describe('Устанавливаем шаблоны договоров', () => {
               it('Регистрируем аккаунты для контрактов', async () => {
-
+                meta.contracts = {}
+                
                 for (const target of targets) {
                   const key = Object.keys(target)[0]; // Получаем значение объекта
                   const value = Object.values(target)[0]; // Получаем значение объекта
@@ -965,7 +1057,6 @@ async function init(){
                   } catch(e) {
                     // Обработка ошибок
 
-                    // console.log('\n\t_______ аккаунт ', value)
                     // await generateKeypair(value)
                     
                     const account = {
@@ -975,14 +1066,20 @@ async function init(){
                       userData: { value: 'someUserData' },
                       sign: "sign",
                       tgId: 1,
-                      email: generateRandomEmail()
+                      email: generateRandomEmail(),
+                      signature_hash: ""
                     };
                     
-                    await registerAccount(account);
-                    await set_code_permissions(api, account.pub, value, [value])
-                    await buy_resources(api, network, {username: value, ram_kbytes: 2048})
-                    await setContract(api, key, value, network)  
                     
+                    console.log(1)
+                    await registerAccount(account);
+                    console.log(2)
+                    await set_code_permissions(api, account.pub, value, [value])
+                    console.log(3)
+                    await buy_resources(api, network, {username: value, ram_kbytes: 2048})
+                    console.log(4)
+                    await setContract(api, key, value, network)  
+                    console.log(5)
                   }
                 }
 
@@ -994,7 +1091,7 @@ async function init(){
                 const drafts = require("../../terminal/src/utils/drafts.js")
                 
                 meta.drafts = []
-                meta.drafts_version = getRandomInt()
+                meta.drafts_version = getRandomInt() //1
                 meta.drafts_lang = 'ru'
                 try {
                   for (let index = 0; index < drafts.length; index++) {
@@ -1015,7 +1112,7 @@ async function init(){
                           title: draft.translations[meta.drafts_lang].title,
                           description: draft.translations[meta.drafts_lang].title,
                           context: draft.draft,
-                          model: JSON.stringify({}),
+                          model: JSON.stringify(draft.model),
                           translation_data: JSON.stringify(draft.translations[meta.drafts_lang]),
                         },
                       }]
@@ -1118,7 +1215,7 @@ async function init(){
                 const account = {
                   coopname: getTarget('ano'),
                   name: username,
-                  pub: key.publicKey,
+                  pub: network_config.producer_key,
                   userData,
                   sign,
                   tgId,
@@ -1129,67 +1226,6 @@ async function init(){
                 
                 assert.equal(status, 'ok');
               }).timeout(10000);
-
-
-             it('Регистрируем кооператив', async () => {
-                
-                try {
-                  let result = await api.transact({
-                    actions: [{
-                      account: getTarget('registrator'),
-                      name: 'regorg',
-                      authorization: [{
-                        actor: getTarget('ano'),
-                        permission: 'active',
-                      }],
-                      data: {
-                        registrator: getTarget('ano'),
-                        username: meta.coopname,
-                        params: {
-                          storage: {
-                            storage_username: getTarget('ano'),
-                            uid: "uid"
-                          },
-                          is_cooperative: true,
-                          coop_type: "conscoop",
-                          token_contract: network_config.coopcontract,
-                          slug: "testcoop",
-                          announce: null,
-                          description: null,
-                          initial: `1.0000 ${network_config.coopsymbol}`,
-                          minimum: `1.0000 ${network_config.coopsymbol}`,
-                          membership: `1.0000 ${network_config.coopsymbol}`,
-                          period: "monthly",
-                        }
-                      },
-                    },
-                    {
-                      account: getTarget('registrator'),
-                      name: 'verificate',
-                      authorization: [{
-                        actor: getTarget('ano'),
-                        permission: 'active',
-                      }],
-                      data: {
-                        username: meta.coopname,
-                        procedure: "online"
-                      },
-                    }
-                    ]
-                  }, {
-                    blocksBehind: 3,
-                    expireSeconds: 30,
-                  });
-
-                  assert.exists(result.transaction_id, 'Успешная регистрация');
-                  
-
-                } catch (error) {
-                  console.log(error)
-                  assert.fail(error.message);
-                }
-              }).timeout(10000)
-
 
              it('Регистрируем аккаунт для контракта токена кооператива', async () => {
 
@@ -1215,7 +1251,7 @@ async function init(){
 
 
                 const account = {
-                  coopname: meta.coopname,
+                  coopname: getTarget('ano'),
                   name: username,
                   pub: network_config.accounts.params.default_key,
                   userData,
@@ -1250,6 +1286,68 @@ async function init(){
               }).timeout(20000);
 
 
+
+             it('Регистрируем кооператив', async () => {
+                
+                try {
+                  let result = await api.transact({
+                    actions: [{
+                      account: getTarget('registrator'),
+                      name: 'regorg',
+                      authorization: [{
+                        actor: getTarget('ano'),
+                        permission: 'active',
+                      }],
+                      data: {
+                        coopname: getTarget('ano'),
+                        username: meta.coopname,
+                        params: {
+                          storage: {
+                            storage_username: getTarget('ano'),
+                            uid: "uid"
+                          },
+                          is_cooperative: true,
+                          coop_type: "conscoop",
+                          token_contract: meta.cooptoken,
+                          slug: "testcoop",
+                          announce: null,
+                          description: null,
+                          initial: `1000.0000 ${network_config.coopsymbol}`,
+                          minimum: `1000.0000 ${network_config.coopsymbol}`,
+                          membership: `1000.0000 ${network_config.coopsymbol}`,
+                          period: "monthly",
+                        }
+                      },
+                    },
+                    {
+                      account: getTarget('registrator'),
+                      name: 'verificate',
+                      authorization: [{
+                        actor: getTarget('ano'),
+                        permission: 'active',
+                      }],
+                      data: {
+                        username: meta.coopname,
+                        procedure: "online"
+                      },
+                    }
+                    ]
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+                  assert.exists(result.transaction_id, 'Успешная регистрация');
+                  
+
+                } catch (error) {
+                  console.log(error)
+                  assert.fail(error.message);
+                }
+              }).timeout(10000)
+
+
+             
              it('Создаём токен кооператива', async () => {
 
                 const result = await create(targets, meta.cooptoken, api, meta.coopname, `1000000000.0000 ${network_config.coopsymbol}`, "");
@@ -1265,10 +1363,22 @@ async function init(){
                 const tgId = 12345;
                 const sign = 'signature';
                 const userData = { value: 'someUserData' };
-                const username = generateRandomAccountName()
+                
+                try {
+                  
+                  const account = await rpc.get_account(network_config.chairman);
+                  username = generateRandomAccountName()
+
+                } catch(e) {
+                  username = network_config.chairman                  
+                }
                 
                 console.log('\n\t_______ аккаунт председателя')
                 const keys = await generateKeypair(username)
+                const wif_hash = await ecc.sha256(keys.privateKey)
+
+                console.log("\n\t Хэш ключа для авторизации на бэкенде: ", wif_hash)
+                
 
                 const account = {
                   coopname: meta.coopname,
@@ -1292,15 +1402,10 @@ async function init(){
                 const chairman = meta.member1;
                 // const members = ['tester1', 'tester2']; // Председатель в списке
                 
-                const members = [{
-                  username: chairman,
-                  is_voting: true,
-                  position_title: "Председатель",
-                  position: "member",
-                }]
-                
+                const members = []
+                // console.log("members", members)
                 try {
-                  let result = await api.transact({
+                  let data = {
                     actions: [{
                       account: getTarget('soviet'),
                       name: 'createboard',
@@ -1318,7 +1423,9 @@ async function init(){
                         description: ""
                       },
                     }]
-                  }, {
+                  }
+                  // console.log(data.actions[0])
+                  let result = await api.transact(data, {
                     blocksBehind: 3,
                     expireSeconds: 30,
                   });
@@ -1330,7 +1437,8 @@ async function init(){
                   assert.fail(result.transaction_id, "Совет создан без председателя")
                   // Проверьте успешное выполнение транзакции
                 } catch (error) {
-                  assert.exists(error.message, 'Председатель кооператива должен быть указан в членах совета');
+                  // console.log("error: ", error.message)
+                  assert.exists(error.message, 'assertion failure with message: Председатель кооператива должен быть указан в членах совета');
                 }
               });
             
@@ -1347,10 +1455,7 @@ async function init(){
                   position_title: "Председатель",
                   position: "chairman",
                 }]
-                
-                try {
-                  let result = await api.transact({
-                    actions: [{
+                const actions = [{
                       account: getTarget('soviet'),
                       name: 'createboard',
                       authorization: [{
@@ -1367,6 +1472,11 @@ async function init(){
                         description: ""
                       },
                     }]
+                // console.log("action" , actions[0])
+
+                try {
+                  let result = await api.transact({
+                    actions
                   }, {
                     blocksBehind: 3,
                     expireSeconds: 30,
@@ -1379,7 +1489,6 @@ async function init(){
 
                   // Проверьте успешное выполнение транзакции
                 } catch (error) {
-                  console.log("error.message: ", error.message)
                   assert.equal(error.message, 'Председатель кооператива должен быть указан в членах совета');
                 }
               });
@@ -1412,7 +1521,9 @@ async function init(){
                         period: "percase", 
                         category: "ru", 
                         calculation_type: "absolute", 
-                        membership_percent_fee: 0
+                        membership_percent_fee: 0,
+                        warranty_delay_secs: 3,
+                        deadline_for_receipt_secs: 3, 
                       },
                     }]
                   }, {
@@ -1420,14 +1531,14 @@ async function init(){
                     expireSeconds: 30,
                   });
 
-                  meta.program_id = findAction(result, "newid").id
+                  meta.program_id = findAction(result, "program").program_id
 
                   // Здесь можно добавить дополнительные проверки результата, если это необходимо
                   assert.exists(result.transaction_id, 'Транзакция должна была быть успешной');
 
                   // Проверьте успешное выполнение транзакции
                 } catch (error) {
-                  console.log("error.message: ", error.message)
+                  console.error("error.message: ", error.message)
                   assert.fail(error.message, 'Председатель кооператива должен быть указан в членах совета');
                 }
             });
@@ -1482,33 +1593,43 @@ async function init(){
 
                   // Проверьте успешное выполнение транзакции
                 } catch (error) {
-                  console.log("error.message: ", error.message)
+                  console.error("error.message: ", error.message)
                   assert.fail(error.message, 'Председатель кооператива должен быть указан в членах совета');
                 }
               });
             
 
-             it('Создаём предложение на обмен', async () => {
+             it('Создаём адрес для приёма-выдачи товара', async () => {
                 
                 let data = {
-                  params: {
-                    coopname: meta.coopname,
-                    username: meta.member1,
-                    parent_id: 0,
-                    program_id: meta.program_id,
-                    pieces: 10,
-                    price_for_piece: `10.0000 ${network_config.coopsymbol}`,
-                    data: JSON.stringify({title: 'Лакомый продукт', description: "Чёткое описание", preview: "https://img.freepik.com/premium-vector/grocery-store-set_267448-203.jpg", images: ["https://img.freepik.com/premium-vector/grocery-store-set_267448-203.jpg", "https://pictures.pibig.info/uploads/posts/2023-04/1681263763_pictures-pibig-info-p-produkti-risunok-vkontakte-3.jpg"]}),
-                    meta: JSON.stringify({})
-                  }
+                  coopname: meta.coopname,
+                  chairman: meta.member1,
+                  cooplate: "",
+                  data: {
+                    "latitude": "55.7558",
+                    "longitude": "37.6176",
+                    "country": "Russia",
+                    "state": "Moscow",
+                    "city": "Moscow",
+                    "district": "Tverskoy",
+                    "street": "Tverskaya Street",
+                    "house_number": "7",
+                    "building_section": "A",
+                    "unit_number": "12",
+                    "directions": "Enter from Tverskaya Street, through the main entrance, take the elevator to the 3rd floor, unit 12 is on the right.",
+                    "phone_number": "+7 495 123 4567",
+                    "business_hours": "Mon-Fri 9:00-18:00"
+                  },
+                  meta: JSON.stringify({})  
                 }
 
+                // console.log("data:", data)
                 try {
 
                   let result = await api.transact({
                     actions: [{
-                      account: getTarget('marketplace'),
-                      name: 'offer',
+                      account: getTarget('soviet'),
+                      name: 'creaddress',
                       authorization: [{
                         actor: meta.member1,
                         permission: 'active',
@@ -1520,53 +1641,21 @@ async function init(){
                     expireSeconds: 30,
                   });
 
-                  assert.exists(result.transaction_id, 'Предложение успешно создано');
-                  
-                  meta.exchange_id = findAction(result, "newid").id
+                  assert.exists(result.transaction_id, 'Адрес успешно создан');
+                  // console.log("result: ", result.processed.action_traces)
+                  // meta.address_id = findAction(result, "newid").id
                   // console.log("exchange_id: ", meta.exchange_id)
 
-                  let cons = findConsoleResponses(result)
+                  // let cons = findConsoleResponses(result)
                   // console.log("console>", cons)
 
                 } catch (error) {
+                  // console.log(error)
+                  console.error(error.json)
                   assert.fail(error.message);
                 }
               }).timeout(10000);
 
-
-             it('Проводим модерацию предложения', async () => {
-                
-                const data = {
-                  coopname: meta.coopname,
-                  username: meta.member1,
-                  exchange_id: meta.exchange_id,
-                }
-                // console.log("data", data)
-                try {
-
-                  let result = await api.transact({
-                    actions: [{
-                      account: getTarget('marketplace'),
-                      name: 'moderate',
-                      authorization: [{
-                        actor: meta.member1,
-                        permission: 'active',
-                      }],
-                      data
-                    }]
-                  }, {
-                    blocksBehind: 3,
-                    expireSeconds: 30,
-                  });
-
-                  assert.exists(result.transaction_id, 'Предложение не прошло модерацию');
-                  
-                  // let cons = findConsoleResponses(result)
-                  
-                } catch (error) {
-                  assert.fail(error.message);
-                }
-              }).timeout(10000);
 
 
              it('Регистрируем аккаунт для пайщика', async () => {
@@ -1577,7 +1666,7 @@ async function init(){
                 const userData = { value: 'someUserData' };
                 const username = generateRandomAccountName()
                 
-                console.log('\n\t_______ аккаунт пайщика')
+                console.log('\n\t_______ аккаунт пайщика (заказчика)')
                 const keys = await generateKeypair(username)
 
                 const account = {
@@ -1617,10 +1706,7 @@ async function init(){
 
                 const result = await joincoop(targets, api, meta.coopname, meta.member2);
 
-                // Получаем запись из таблицы после регистрации
-                const secondary_key = eosjsAccountName.nameToUint64(meta.member2);
-
-                meta.joincoop_decision_id = findAction(result, "newid").id
+                meta.joincoop_decision_id = findAction(result, "draft").decision_id
 
                 const registeredAccount2 = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id);
                 
@@ -1670,7 +1756,8 @@ async function init(){
                 await exec(targets, api, meta.coopname, chairman, meta.joincoop_decision_id);
                 // Получаем запись из таблицы после добавления
                 const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id, 1);
-                assert.equal(decision.executed, 1);
+                if (decision)
+                  assert.fail("Решение не удалено из RAM");
 
               });
 
@@ -1681,13 +1768,869 @@ async function init(){
                 assert.equal(account.status, "active");
               });
 
+
+
               it('Пополняем баланс пайщику для совершения заказа', async () => {
                 try {
-                  await issue(targets, meta.cooptoken, api, meta.member2, `100.0000 ${network_config.coopsymbol}`, "");
+                  //TODO заменить это на нормальное пополнение баланса взносом
+
+                  await issue(targets, meta.cooptoken, api, meta.member2, `1000.0000 ${network_config.coopsymbol}`, "");
+                  
+                  const transferData = {
+                        from: meta.member2,
+                        to: getTarget('soviet'),
+                        quantity: `100.0000 ${network_config.coopsymbol}`,
+                        memo: meta.coopname
+                      }
+
+                  // console.log("transferData: ", transferData)
+                  // console.log("contract token: ", meta.cooptoken)
+
+                  let result = await api.transact({
+                    actions: [{
+                      account: meta.cooptoken,
+                      name: 'transfer',
+                      authorization: [{
+                        actor: meta.member2,
+                        permission: 'active',
+                      }],
+                      data: transferData
+                    }]
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+
+                  await printWallet(rpc, meta.coopname, meta.member2, "ЗАКАЗЧИКА")
+
                 } catch (e) {
                   assert.fail(e.message)
                 }
               });
+
+
+
+              /////////////////////////////////////
+             it('Регистрируем аккаунт для второго пайщика (поставщика)', async () => {
+
+                const email = generateRandomEmail();
+                const tgId = 12345;
+                const sign = 'signature';
+                const userData = { value: 'someUserData' };
+                const username = generateRandomAccountName()
+                
+                console.log('\n\t_______ аккаунт пайщика (поставщика)')
+                const keys = await generateKeypair(username)
+
+                const account = {
+                  coopname: meta.coopname,
+                  name: username,
+                  pub: keys.publicKey,
+                  userData,
+                  sign,
+                  tgId,
+                  email
+                };
+
+                meta.member3 = account.name
+
+                const {status, message} = await registerAccount(account);
+                assert.equal(status, 'ok');
+
+                const registeredAccount1 = await getTableRow(rpc, getTarget('registrator'), getTarget('registrator'), 'accounts', meta.member3, 1);
+                assert.exists(registeredAccount1, 'Запись аккаунта не найдена в таблице registrator -> accounts');
+
+              }).timeout(10000);
+
+
+              it('Создаём карточку второго пайщика (поставщика)', async () => {
+
+                const individ = await regindivid(targets, api, meta.coop_id, meta.member3);
+
+                
+                const registeredAccount1 = await getTableRow(rpc, getTarget('registrator'), getTarget('registrator'), 'accounts', meta.member3, 1);
+                assert.exists(registeredAccount1, 'Запись аккаунта не найдена в таблице registrator -> accounts');
+
+                
+              }).timeout(10000);
+
+              it('Отправляем заявление от пайщика (поставщка) на вступление в кооператив', async () => {
+
+                const result = await joincoop(targets, api, meta.coopname, meta.member3);
+
+                meta.joincoop_decision_id2 = findAction(result, "draft").decision_id
+
+                const registeredAccount2 = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id2);
+                
+                assert.exists(registeredAccount2, 'Запись аккаунта не найдена в таблице soviet -> decisions');
+                
+              }).timeout(10000);
+
+
+            it('Валидируем администратором поступление оплаты и корректность данных пайщика', async () => {
+                
+                await validate(targets, api, meta.coopname, meta.member1, meta.joincoop_decision_id2);
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id2, 1);
+                assert.equal(decision.validated, 1);
+                
+              }).timeout(10000);
+
+            
+            it('Голосуем председателем как членом совета за решение', async () => {
+
+                await votefor(targets, api, meta.coopname, meta.member1, meta.joincoop_decision_id2);
+
+                // Проверяем, что голос зарегистрирован
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id2, 1);
+                assert.equal(decision.votes_for.length, 1);
+                assert.equal(decision.approved, 1);
+                
+              }).timeout(10000);
+
+              
+              it('Утверждаем решение председателем совета', async () => {
+                const chairman = meta.member1;
+
+                try {
+                  await authorize(targets, api, meta.coopname, chairman, meta.joincoop_decision_id2);
+                } catch (e) {
+                  assert.fail(e.message)
+                }
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id2, 1);
+                
+                assert.equal(decision.authorized, 1);
+
+              });
+
+              it('Исполняем решение совета о принятии пайщика в кооператив', async () => {
+                const chairman = meta.member1;
+                await exec(targets, api, meta.coopname, chairman, meta.joincoop_decision_id2);
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id2, 1);
+                if (decision)
+                  assert.fail("Решение не удалено из RAM");
+
+              });
+
+              it('Проверяем активный статус пайщика', async () => {
+                // Получаем запись из таблицы после добавления
+                const account = await getTableRow(rpc, getTarget('registrator'), getTarget('registrator'), 'accounts', meta.member3, 1);
+                
+                assert.equal(account.status, "active");
+              });
+
+
+             it('Создаём открытую заявку на поставку от поставщика', async () => {
+                meta.product_lifecycle_secs = 10
+
+                let data = {
+                  params: {
+                    coopname: meta.coopname,
+                    username: meta.member3,
+                    parent_id: 0,
+                    program_id: meta.program_id,
+                    pieces: 10,
+                    price_for_piece: `10.0000 ${network_config.coopsymbol}`,
+                    product_lifecycle_secs: meta.product_lifecycle_secs,
+                    data: JSON.stringify({title: 'Лакомый продукт', description: "Чёткое описание", preview: "https://img.freepik.com/premium-vector/grocery-store-set_267448-203.jpg", images: ["https://img.freepik.com/premium-vector/grocery-store-set_267448-203.jpg", "https://pictures.pibig.info/uploads/posts/2023-04/1681263763_pictures-pibig-info-p-produkti-risunok-vkontakte-3.jpg"]}),
+                    meta: JSON.stringify({}),
+                    document: { //документ пустой потому что открытая заявка на поставку
+                      hash: "",
+                      pkey: "",
+                      sign: "",
+                      meta: ""
+                    }
+                  }
+                }
+                // console.log("data:", data)
+                try {
+
+                  let result = await api.transact({
+                    actions: [{
+                      account: getTarget('marketplace'),
+                      name: 'offer',
+                      authorization: [{
+                        actor: meta.member3,
+                        permission: 'active',
+                      }],
+                      data: data
+                    }]
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+                  assert.exists(result.transaction_id, 'Предложение успешно создано');
+                  // console.log("result: ", result.processed.action_traces)
+                  meta.exchange_id1 = findAction(result, "newid").id
+                  // console.log("exchange_id: ", meta.exchange_id)
+
+                  let cons = findConsoleResponses(result)
+                  // console.log("console>", cons)
+
+                  await printWallet(rpc, meta.coopname, meta.member3, "ПОСТАВЩИКА")
+
+                } catch (error) {
+                  // console.log(error)
+                  console.log(error.json)
+                  assert.fail(error.message);
+                }
+              }).timeout(10000);
+
+
+             it('Проводим модерацию предложения', async () => {
+                
+                const data = {
+                  coopname: meta.coopname,
+                  username: meta.member1,
+                  exchange_id: meta.exchange_id1,
+                }
+                // console.log("data", data)
+                try {
+
+                  let result = await api.transact({
+                    actions: [{
+                      account: getTarget('marketplace'),
+                      name: 'moderate',
+                      authorization: [{
+                        actor: meta.member1,
+                        permission: 'active',
+                      }],
+                      data
+                    }]
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+                  assert.exists(result.transaction_id, 'Предложение не прошло модерацию');
+                  
+                  // let cons = findConsoleResponses(result)
+                  
+                } catch (error) {
+                  assert.fail(error.message);
+                }
+              }).timeout(10000);
+
+             it('Создаём встречную заявку на поставку от лица пайщика', async () => {
+                
+                let data = {
+                  params: {
+                    coopname: meta.coopname,
+                    username: meta.member2,
+                    parent_id: meta.exchange_id1,
+                    program_id: meta.program_id,
+                    pieces: 1,
+                    price_for_piece: `10.0000 ${network_config.coopsymbol}`,
+                    product_lifecycle_secs: 0,
+                    data: JSON.stringify({title: 'Встречный лакомый продукт', description: "Встречное чёткое описание", preview: "https://img.freepik.com/premium-vector/grocery-store-set_267448-203.jpg", images: ["https://img.freepik.com/premium-vector/grocery-store-set_267448-203.jpg", "https://pictures.pibig.info/uploads/posts/2023-04/1681263763_pictures-pibig-info-p-produkti-risunok-vkontakte-3.jpg"]}),
+                    meta: JSON.stringify({}),
+                    document: { //документ пустой потому что открытая заявка на поставку
+                      hash: "хэш заявления на возврат продуктом",
+                      pkey: "публичный ключ заказчика",
+                      sign: "подпись заказчика",
+                      meta: "мета данные документа заказчика"
+                    }
+                  }
+                }
+                // console.log("data:", data)
+                try {
+
+                  let result = await api.transact({
+                    actions: [{
+                      account: getTarget('marketplace'),
+                      name: 'order',
+                      authorization: [{
+                        actor: meta.member2,
+                        permission: 'active',
+                      }],
+                      data: data
+                    }]
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+                  assert.exists(result.transaction_id, 'Предложение успешно создано');
+                  // console.log("result: ", result.processed.action_traces)
+                  meta.exchange_id2 = findAction(result, "newid").id
+                  // console.log("exchange_id: ", meta.exchange_id)
+
+                  let cons = findConsoleResponses(result)
+                  
+                  // console.log("console>", cons)
+                  await printWallet(rpc, meta.coopname, meta.member2, "ЗАКАЗЧИКА")
+                  // await printWallet(rpc, meta.coopname, meta.member3, "ПОСТАВЩИКА")
+
+                } catch (error) {
+                  // console.log(error)
+                  console.log(error.json)
+                  assert.fail(error.message);
+                }
+              }).timeout(10000);
+
+
+             it('Выражаем согласие поставить продукт', async () => {
+                
+                // console.log("data", data)
+                try {
+                  let data = {
+                        coopname: meta.coopname,
+                        username: meta.member3,
+                        exchange_id: meta.exchange_id2,
+                        document: {
+                          hash: "хэш заявления на взнос продуктом",
+                          pkey: "публичный ключ поставщика",
+                          sign: "подпись поставщика",
+                          meta: "мета данные документа поставщика"
+                        }
+                      }
+                  // console.log("data: ", data)
+                  let result = await api.transact({
+                    actions: [{
+                      account: getTarget('marketplace'),
+                      name: 'accept',
+                      authorization: [{
+                        actor: meta.member3,
+                        permission: 'active',
+                      }],
+                      data
+                    }]
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+                  assert.exists(result.transaction_id, 'Согласие не принято');
+                  
+                  let cons = findConsoleResponses(result)
+                  // console.log("RESULT: ", result)
+                  // console.log("manual console: ", result.processed.action_traces[0].inline_traces)
+                  // console.log("console: ", cons)
+                  // 
+                  
+                  const actions = findActions(result, "draft")
+                  
+
+                  meta.decisions = []
+                  actions.forEach((action, index) => meta.decisions[index] = {...action.data})
+                  
+                  // console.log("Черновики решений: ", meta.decisions)
+
+                  await printWallet(rpc, meta.coopname, meta.member2, "ЗАКАЗЧИКА")
+                  await printWallet(rpc, meta.coopname, meta.member3, "ПОСТАВЩИКА")
+
+
+                } catch (error) {
+                  if (error.json)
+                    console.log(error.json.error.details)
+                  assert.fail(error.message);
+                }
+              }).timeout(10000);
+
+
+              it('Получаем заявки и черновики решений', async () => {
+                const chairman = meta.member1;
+                
+                const order_1 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id1, 1);
+                console.log("order_1: ", order_1)
+
+                // console.log("meta.decisions[0]: ", meta.decisions[0])
+                // console.log("meta.decisions", meta.decisions)
+
+                const decision_1 = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.decisions[0].decision_id, 1);
+                console.log("decision_1: ", decision_1);
+
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("order_2: ", order_2)   
+
+                const decision_2 = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.decisions[1].decision_id, 1);
+                console.log("decision_2: ", decision_2);
+                
+                const batch = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'changes', meta.exchange_id2, 2);
+                console.log("batch: ", batch);
+                
+                meta.contribution_product_decision_id = batch.contribution_product_decision_id
+                meta.return_product_decision_id = batch.return_product_decision_id
+
+              });
+
+            
+            it('Голосуем председателем как членом совета за решение о приёме имущества', async () => {
+
+                await votefor(targets, api, meta.coopname, meta.member1, meta.contribution_product_decision_id);
+
+                // Проверяем, что голос зарегистрирован
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.contribution_product_decision_id, 1);
+                assert.equal(decision.votes_for.length, 1);
+                assert.equal(decision.approved, 1);
+
+
+              }).timeout(10000);
+
+              
+              it('Утверждаем решение о приёме взноса председателем совета', async () => {
+                const chairman = meta.member1;
+
+                try {
+                  await authorize(targets, api, meta.coopname, chairman, meta.contribution_product_decision_id, "hash_of_contribution", "pkey_of_contribution", "sign_of_contribution", "meta_of_contribution");
+                } catch (e) {
+                  assert.fail(e.message)
+                }
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.contribution_product_decision_id, 1);
+                
+                assert.equal(decision.authorized, 1);
+
+              });
+
+              it('Исполняем решение совета о принятии взноса в кооператив', async () => {
+                const chairman = meta.member1;
+                await exec(targets, api, meta.coopname, chairman, meta.contribution_product_decision_id);
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.contribution_product_decision_id, 1);
+                
+                console.log("decision после утверждения: ", decision)
+
+                console.log("Смотрим изменение статуса (не должно быть): ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("order_2: ", order_2) 
+
+                assert.equal(order_2.status, "accepted")
+
+                if (!decision)
+                  assert.fail("Решение удалено из RAM");
+
+              });
+
+
+
+
+
+            it('Голосуем председателем как членом совета за решение о возврате имущества', async () => {
+
+                await votefor(targets, api, meta.coopname, meta.member1, meta.return_product_decision_id);
+
+                // Проверяем, что голос зарегистрирован
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.return_product_decision_id, 1);
+                assert.equal(decision.votes_for.length, 1);
+                assert.equal(decision.approved, 1);
+
+
+              }).timeout(10000);
+
+              
+              it('Утверждаем решение о приёме взноса председателем совета', async () => {
+                const chairman = meta.member1;
+
+                try {
+                  await authorize(targets, api, meta.coopname, chairman, meta.return_product_decision_id, "hash_of_return", "pkey_of_return", "sign_of_return", "meta_of_return");
+                } catch (e) {
+                  assert.fail(e.message)
+                }
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.return_product_decision_id, 1);
+                
+                assert.equal(decision.authorized, 1);
+
+              });
+
+              it('Исполняем решение совета о принятии взноса в кооператив', async () => {
+                const chairman = meta.member1;
+                const result = await exec(targets, api, meta.coopname, chairman, meta.return_product_decision_id);
+                // Получаем запись из таблицы после добавления
+                const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.return_product_decision_id, 1);
+                
+                let cons = findConsoleResponses(result)
+                console.log("console: ", cons)
+                
+                console.log("decision после утверждения: ", decision)
+
+                console.log("Смотрим изменение статуса на authorized и на решения совета: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("order_2: ", order_2) 
+
+                assert.equal(order_2.status, "authorized")
+
+                if (decision)
+                  assert.fail("Решение не удалено из RAM");
+
+                const batch = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'changes', meta.exchange_id2, 2);
+                
+                if (batch)
+                  assert.fail("Пачка решений должна удаляться из RAM");
+              });
+
+
+              it('Ждём, пока поставщик доедет до кооперативного участка', async () => {
+                // nothing
+              })
+
+              
+              it('Председатель осмотрел имущество пайщика и подтвердил приём', async () => {
+                const chairman = meta.member1;
+                const data = {
+                      coopname: meta.coopname,
+                      username: chairman,
+                      exchange_id: meta.exchange_id2,
+                      document: {
+                        hash: "хэш акта приёма от председателя",
+                        pkey: "публичный ключ на хэша акта приёма от председателя",
+                        sign: "подпись хэша акта приёма от председателя", 
+                        meta: "мета акта приёма от председателя", 
+                      }
+                    }
+                
+                let actions = [{
+                    account: getTarget('marketplace'),
+                    name: 'supplycnfrm',
+                    authorization: [{
+                      actor: chairman,
+                      permission: 'active',
+                    }],
+                    data
+                  }]
+
+                let result = await api.transact({
+                  actions
+                }, {
+                  blocksBehind: 3,
+                  expireSeconds: 30,
+                });
+
+
+                console.log("Смотрим изменение статуса на supplied1 на встречной заявке: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("встречная аявка: ", order_2) 
+
+                assert.equal(order_2.status, "supplied1")
+
+              });
+
+
+
+
+            it('Поставщик подтвердил передачу имущества кооперативу', async () => {
+                const chairman = meta.member1;
+                
+                const data = {
+                      coopname: meta.coopname,
+                      username: meta.member3,
+                      exchange_id: meta.exchange_id2,
+                      document: {
+                        hash: "хэш акта приёма от пайщика",
+                        pkey: "публичный ключ на хэша акта приёма от пайщика",
+                        sign: "подпись хэша акта приёма от пайщика", 
+                        meta: "мета акта приёма от пайщика", 
+                      }
+                    }
+                let actions = [{
+                    account: getTarget('marketplace'),
+                    name: 'supply',
+                    authorization: [{
+                      actor: meta.member3,
+                      permission: 'active',
+                    }],
+                    data
+                  }]
+
+                let result = await api.transact({
+                  actions
+                }, {
+                  blocksBehind: 3,
+                  expireSeconds: 30,
+                });
+
+
+                console.log("Смотрим изменение статуса на supplied2 на встречной заявке: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("встречная аявка: ", order_2) 
+
+                console.log("Должен появиться заблокированный баланс кошелька у поставщика")
+                await printWallet(rpc, meta.coopname, meta.member2, "ЗАКАЗЧИКА")
+                await printWallet(rpc, meta.coopname, meta.member3, "ПОСТАВЩИКА")
+
+
+                assert.equal(order_2.status, "supplied2")
+
+              });
+
+
+            it('Председатель самостоятельно организует доставку до КУ заказчика', async () => {
+                const chairman = meta.member1;
+                
+                const data = {
+                      coopname: meta.coopname,
+                      username: meta.member1,
+                      exchange_id: meta.exchange_id2,
+                      document: {
+                        hash: "хэш акта приёма от пайщика",
+                        pkey: "публичный ключ на хэша акта приёма от пайщика",
+                        sign: "подпись хэша акта приёма от пайщика", 
+                        meta: "мета акта приёма от пайщика", 
+                      }
+                    }
+                let actions = [{
+                    account: getTarget('marketplace'),
+                    name: 'delivered',
+                    authorization: [{
+                      actor: meta.member1,
+                      permission: 'active',
+                    }],
+                    data
+                  }]
+
+                let result = await api.transact({
+                  actions
+                }, {
+                  blocksBehind: 3,
+                  expireSeconds: 30,
+                });
+
+
+                console.log("Смотрим изменение статуса на delivered на встречной заявке: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("встречная аявка: ", order_2) 
+
+                assert.equal(order_2.status, "delivered")
+
+              });
+
+
+            it('Пайщик-заказчик подтверждает получение имущества в должном качестве подписью акта', async () => {
+                const chairman = meta.member1;
+                
+                const data = {
+                      coopname: meta.coopname,
+                      username: meta.member2,
+                      exchange_id: meta.exchange_id2,
+                      document: {
+                        hash: "хэш акта выдачи от пайщика",
+                        pkey: "публичный ключ на хэше акта выдачи от пайщика",
+                        sign: "подпись хэша акта выдачи от пайщика", 
+                        meta: "мета акта выдачи от пайщика", 
+                      }
+                    }
+                let actions = [{
+                    account: getTarget('marketplace'),
+                    name: 'recieve',
+                    authorization: [{
+                      actor: meta.member2,
+                      permission: 'active',
+                    }],
+                    data
+                  }]
+
+                let result = await api.transact({
+                  actions
+                }, {
+                  blocksBehind: 3,
+                  expireSeconds: 30,
+                });
+
+
+                console.log("Смотрим изменение статуса на recieved1 на встречной заявке: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("встречная аявка: ", order_2) 
+
+                assert.equal(order_2.status, "recieved1")
+
+              });
+
+
+            it('Председатель подтверждает выдачу имущества подписью акта', async () => {
+                const chairman = meta.member1;
+                
+                const data = {
+                      coopname: meta.coopname,
+                      username: meta.member1,
+                      exchange_id: meta.exchange_id2,
+                      document: {
+                        hash: "хэш акта выдачи от председателя",
+                        pkey: "публичный ключ на хэше акта выдачи от председателя",
+                        sign: "подпись хэша акта выдачи от председателя", 
+                        meta: "мета акта выдачи от председателя", 
+                      }
+                    }
+
+                let actions = [{
+                    account: getTarget('marketplace'),
+                    name: 'recievecnfrm',
+                    authorization: [{
+                      actor: meta.member1,
+                      permission: 'active',
+                    }],
+                    data
+                  }]
+
+                let result = await api.transact({
+                  actions
+                }, {
+                  blocksBehind: 3,
+                  expireSeconds: 30,
+                });
+
+
+                console.log("Смотрим изменение статуса на recieved2 на встречной заявке: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("встречная аявка: ", order_2) 
+
+                console.log("Начинается гарантийная задержка, изменений по балансам быть не должно: ")
+                await printWallet(rpc, meta.coopname, meta.member2, "ЗАКАЗЧИКА")
+                await printWallet(rpc, meta.coopname, meta.member3, "ПОСТАВЩИКА")
+
+                assert.equal(order_2.status, "recieved2")
+
+              });
+              
+              it('Неудачная заблокировка денег поставщику до истечения срока гарантии', async () => {
+                const chairman = meta.member1;
+                try{
+
+
+                 
+                  let actions = [{
+                      account: getTarget('marketplace'),
+                      name: 'complete',
+                      authorization: [{
+                        actor: meta.member2,
+                        permission: 'active',
+                      }],
+                      data: {
+                        coopname: meta.coopname,
+                        username: meta.member2,
+                        exchange_id: meta.exchange_id2
+                      }
+                    }]
+
+                  let result = await api.transact({
+                    actions
+                  }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30,
+                  });
+
+                    assert.fail("Удалось разблокировать средства до истечения гарантии")
+                  } catch(e){
+
+                  }
+
+              });
+
+              const sleep_time = meta.product_lifecycle_secs
+              console.log("sleep_time: ", sleep_time)
+
+              it('Ждём исхода гарантийной задержки', async () => {
+                
+                await sleep(meta.product_lifecycle_secs)
+
+              }).timeout(60000);
+            
+
+
+              it('Разблокируем деньги продавцу', async () => {
+                const chairman = meta.member1;
+                
+               
+                let actions = [{
+                    account: getTarget('marketplace'),
+                    name: 'complete',
+                    authorization: [{
+                      actor: meta.member2,
+                      permission: 'active',
+                    }],
+                    data: {
+                      coopname: meta.coopname,
+                      username: meta.member2,
+                      exchange_id: meta.exchange_id2
+                    }
+                  }]
+
+                let result = await api.transact({
+                  actions
+                }, {
+                  blocksBehind: 3,
+                  expireSeconds: 30,
+                });
+
+
+                console.log("Смотрим изменение статуса на completed на встречной заявке: ")
+                const order_2 = await getTableRow(rpc, getTarget('marketplace'), meta.coopname, 'exchange', meta.exchange_id2, 1);
+                console.log("встречная аявка: ", order_2) 
+
+                console.log("баланс заказчика должен быть списан, в программе ничего не быть. баланс поставщика должен быть разблокирован.")
+                await printWallet(rpc, meta.coopname, meta.member2, "ЗАКАЗЧИКА")
+                await printWallet(rpc, meta.coopname, meta.member3, "ПОСТАВЩИКА")
+
+                assert.equal(order_2.status, "completed")
+
+              });
+
+             //COMPLETE (выдать деньги)
+              // через задержку (сразу нельзя)
+             
+             //DISPUTE (открыть гарантийный спор)
+              // только во время задержки
+
+
+
+
+
+
+             // it('Голосуем председателем за решение принять взнос', async () => {
+
+             //    await votefor(targets, api, meta.coopname, meta.member1, meta.joincoop_decision_id);
+
+             //    // Проверяем, что голос зарегистрирован
+             //    const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id, 1);
+             //    assert.equal(decision.votes_for.length, 1);
+             //    assert.equal(decision.approved, 1);
+                
+             //  }).timeout(10000);
+
+            
+            // it('Голосуем председателем за решение вернуть взнос', async () => {
+
+             //    await votefor(targets, api, meta.coopname, meta.member1, meta.joincoop_decision_id);
+
+             //    // Проверяем, что голос зарегистрирован
+             //    const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id, 1);
+             //    assert.equal(decision.votes_for.length, 1);
+             //    assert.equal(decision.approved, 1);
+                
+             //  }).timeout(10000);
+
+
+
+              
+             //  it('Утверждаем решение председателем совета', async () => {
+             //    const chairman = meta.member1;
+
+             //    try {
+             //      await authorize(targets, api, meta.coopname, chairman, meta.joincoop_decision_id);
+             //    } catch (e) {
+             //      assert.fail(e.message)
+             //    }
+             //    // Получаем запись из таблицы после добавления
+             //    const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id, 1);
+                
+             //    assert.equal(decision.authorized, 1);
+
+             //  });
+
+             //  it('Исполняем решение совета о принятии пайщика в кооператив', async () => {
+             //    const chairman = meta.member1;
+             //    await exec(targets, api, meta.coopname, chairman, meta.joincoop_decision_id);
+             //    // Получаем запись из таблицы после добавления
+             //    const decision = await getTableRow(rpc, getTarget('soviet'), meta.coopname, 'decisions', meta.joincoop_decision_id, 1);
+             //    if (decision)
+             //      assert.fail("Решение не удалено из RAM");
+
+             //  });
+
 
   //end
             });

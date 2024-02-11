@@ -44,6 +44,7 @@ async function register_accounts1(eos, account, default_key){
               accounts: [],
               waits: []
             },
+            signature_hash: "testsign"
           },
         }]
       }, {
